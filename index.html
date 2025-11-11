@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽奖游戏</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎉 抽奖游戏 🎉</h1>
+        
+        <!-- 创建奖池区域 -->
+        <div class="setup-panel" id="setupPanel">
+            <div class="card">
+                <h2>创建奖池</h2>
+                <div class="form-group">
+                    <label for="playerCount">参与人数：</label>
+                    <input type="number" id="playerCount" min="1" value="10" placeholder="输入参与人数">
+                </div>
+                <div class="form-group">
+                    <label for="pointsPerPlayer">人均点数：</label>
+                    <input type="number" id="pointsPerPlayer" min="10" step="10" value="100" placeholder="输入人均点数（10的倍数）">
+                </div>
+                <div class="form-group">
+                    <label for="variance">点数差距：</label>
+                    <input type="range" id="variance" min="0" max="100" value="50">
+                    <span class="variance-label">
+                        <span id="varianceValue">50</span>% 
+                        <span class="variance-hint">(0=均分, 100=极端差异)</span>
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="extremeMode">
+                        <span class="checkbox-text">🔥 极限模式（可能出现0点或超高倍数）</span>
+                    </label>
+                </div>
+                <div class="total-display">
+                    奖池总点数: <span id="totalPoints">1000</span> 点
+                </div>
+                <button class="btn btn-primary" onclick="createPrizePool()">创建奖池</button>
+            </div>
+        </div>
+
+        <!-- 抽奖区域 -->
+        <div class="game-panel" id="gamePanel" style="display: none;">
+            <div class="card">
+                <div class="pool-info">
+                    <div class="info-item">
+                        <span class="label">奖池总点数:</span>
+                        <span class="value" id="gameTotalPoints">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">剩余次数:</span>
+                        <span class="value" id="remainingDraws">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">已获得:</span>
+                        <span class="value highlight" id="earnedPoints">0</span>
+                    </div>
+                </div>
+                
+                <div class="prizes-grid" id="prizesGrid">
+                    <!-- 奖项编号将动态生成 -->
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="resetGame()">重新开始</button>
+                    <button class="btn btn-info" onclick="revealAll()">揭晓所有</button>
+                </div>
+            </div>
+
+            <!-- 中奖历史 -->
+            <div class="card history-card" id="historyCard" style="display: none;">
+                <h3>抽奖记录</h3>
+                <div class="history-list" id="historyList">
+                    <!-- 历史记录将动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 动画效果容器 -->
+        <div class="confetti-container" id="confettiContainer"></div>
+        
+        <!-- 状态指示器 -->
+        <div class="status-indicator" id="statusIndicator">
+            <span class="status-dot"></span>
+            <span class="status-text">多人同步</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
