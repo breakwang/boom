@@ -1,0 +1,25 @@
+[Unit]
+Description=Lottery Game Scratch Card Server
+Documentation=https://github.com/yourusername/lottery-game
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+WorkingDirectory=/opt/lottery-game
+Environment=NODE_ENV=production
+Environment=PORT=1232
+Environment=HOST=0.0.0.0
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lottery-game
+
+# 安全设置
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

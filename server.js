@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -41,13 +42,13 @@ let onlineUsers = 0;
 io.on('connection', (socket) => {
     onlineUsers++;
     console.log(`新用户连接，当前在线: ${onlineUsers}`);
-    
+
     // 向新连接的客户端发送当前游戏状态
     socket.emit('gameState', gameState);
-    
+
     // 广播在线人数
     io.emit('onlineUsers', onlineUsers);
-    
+
     // 创建奖池
     socket.on('createPool', (data) => {
         gameState = {
@@ -59,24 +60,24 @@ io.on('connection', (socket) => {
         // 广播给所有客户端
         io.emit('gameState', gameState);
     });
-    
+
     // 抽奖
     socket.on('selectPrize', (data) => {
         const { prizeIndex } = data;
-        
+
         if (gameState.prizes[prizeIndex] && !gameState.prizes[prizeIndex].revealed) {
             // 更新游戏状态
             gameState.prizes[prizeIndex].revealed = true;
             gameState.remainingDraws--;
             gameState.earnedPoints += gameState.prizes[prizeIndex].points;
-            
+
             // 添加历史记录
             gameState.history.push({
                 number: gameState.prizes[prizeIndex].number,
                 points: gameState.prizes[prizeIndex].points,
                 timestamp: Date.now()
             });
-            
+
             // 计算连击
             const now = Date.now();
             if (now - gameState.lastDrawTime < 2000) {
@@ -85,12 +86,12 @@ io.on('connection', (socket) => {
                 gameState.combo = 1;
             }
             gameState.lastDrawTime = now;
-            
+
             console.log(`编号 ${gameState.prizes[prizeIndex].number} 被抽中: ${gameState.prizes[prizeIndex].points} 点`);
-            
+
             // 广播给所有客户端
             io.emit('gameState', gameState);
-            
+
             // 发送抽奖结果
             io.emit('prizeSelected', {
                 prizeIndex,
@@ -99,7 +100,7 @@ io.on('connection', (socket) => {
             });
         }
     });
-    
+
     // 揭晓所有
     socket.on('revealAll', () => {
         gameState.prizes.forEach(prize => {
@@ -108,7 +109,7 @@ io.on('connection', (socket) => {
         console.log('所有奖项已揭晓');
         io.emit('gameState', gameState);
     });
-    
+
     // 重置游戏
     socket.on('resetGame', () => {
         gameState = {
@@ -128,7 +129,7 @@ io.on('connection', (socket) => {
         console.log('游戏已重置');
         io.emit('gameState', gameState);
     });
-    
+
     // 断开连接
     socket.on('disconnect', () => {
         onlineUsers--;
@@ -156,9 +157,12 @@ app.get('/health', (req, res) => {
 });
 
 // 启动服务器
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🎮 抽奖游戏服务器运行在 http://localhost:${PORT}`);
+const PORT = process.env.PORT || 1232;
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+    const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+    console.log(`🎮 抽奖游戏服务器运行在 http://${displayHost}:${PORT}`);
+    console.log(`📡 监听地址: ${HOST}:${PORT}`);
     console.log(`📡 WebSocket 服务已启动`);
     console.log(`👥 等待玩家连接...`);
 });
