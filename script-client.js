@@ -1,3 +1,7 @@
+// Socket.IO 客户端连接
+let socket;
+let isConnected = false;
+
 // 游戏状态
 let gameState = {
     totalPoints: 0,
@@ -13,13 +17,73 @@ let gameState = {
     lastDrawTime: 0
 };
 
-// 本地存储的键名
-const STORAGE_KEY = 'lottery_game_state';
+// 初始化 Socket.IO 连接
+function initSocket() {
+    // 连接到服务器
+    socket = io();
+    
+    // 连接成功
+    socket.on('connect', () => {
+        isConnected = true;
+        updateConnectionStatus(true);
+        console.log('✅ 已连接到服务器');
+    });
+    
+    // 连接断开
+    socket.on('disconnect', () => {
+        isConnected = false;
+        updateConnectionStatus(false);
+        console.log('❌ 与服务器断开连接');
+    });
+    
+    // 接收游戏状态更新
+    socket.on('gameState', (state) => {
+        gameState = state;
+        console.log('📡 收到游戏状态更新');
+        
+        // 根据游戏状态显示对应界面
+        if (gameState.prizes && gameState.prizes.length > 0) {
+            document.getElementById('setupPanel').style.display = 'none';
+            document.getElementById('gamePanel').style.display = 'block';
+            renderGame();
+        } else {
+            document.getElementById('setupPanel').style.display = 'block';
+            document.getElementById('gamePanel').style.display = 'none';
+        }
+    });
+    
+    // 接收在线人数更新
+    socket.on('onlineUsers', (count) => {
+        document.getElementById('onlineCount').textContent = `${count}人在线`;
+    });
+    
+    // 接收抽奖结果（用于触发动画）
+    socket.on('prizeSelected', (data) => {
+        const { prizeIndex, prize, combo } = data;
+        triggerPrizeAnimation(prize, combo);
+    });
+}
+
+// 更新连接状态显示
+function updateConnectionStatus(connected) {
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    
+    if (connected) {
+        statusDot.classList.add('connected');
+        statusDot.classList.remove('disconnected');
+        statusText.textContent = '实时同步';
+    } else {
+        statusDot.classList.remove('connected');
+        statusDot.classList.add('disconnected');
+        statusText.textContent = '连接断开';
+    }
+}
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 从本地存储加载游戏状态
-    loadGameState();
+    // 初始化 Socket.IO
+    initSocket();
     
     // 更新总点数显示
     updateTotalPointsDisplay();
@@ -32,13 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('variance').addEventListener('input', function() {
         document.getElementById('varianceValue').textContent = this.value;
-    });
-    
-    // 监听其他标签页的状态变化
-    window.addEventListener('storage', function(e) {
-        if (e.key === STORAGE_KEY) {
-            loadGameState();
-        }
     });
 });
 
@@ -73,14 +130,19 @@ function createPrizePool() {
         return;
     }
     
+    if (!isConnected) {
+        alert('未连接到服务器，请稍后再试');
+        return;
+    }
+    
     // 计算总点数
     const totalPoints = playerCount * pointsPerPlayer;
     
     // 分配点数到10个编号
     const prizes = distributePoints(totalPoints, winRate, variance);
     
-    // 初始化游戏状态
-    gameState = {
+    // 发送到服务器
+    socket.emit('createPool', {
         totalPoints: totalPoints,
         playerCount: playerCount,
         pointsPerPlayer: pointsPerPlayer,
@@ -92,17 +154,7 @@ function createPrizePool() {
         history: [],
         combo: 0,
         lastDrawTime: 0
-    };
-    
-    // 切换到游戏界面
-    document.getElementById('setupPanel').style.display = 'none';
-    document.getElementById('gamePanel').style.display = 'block';
-    
-    // 保存状态到本地存储
-    saveGameState();
-    
-    // 渲染游戏界面
-    renderGame();
+    });
 }
 
 // 分配点数算法
@@ -228,7 +280,7 @@ function distributePoints(totalPoints, winRate, variance) {
     // 打乱点数顺序
     const shuffledPoints = shuffleArray(allocatedPoints);
     
-    // 创建奖项对象，编号固定1-10，点数随机分配
+    // 创建奖项对象
     for (let i = 0; i < numberOfPrizes; i++) {
         prizes.push({
             number: i + 1,
@@ -425,78 +477,38 @@ function selectPrize(index) {
         return;
     }
     
-    // 揭晓奖项
-    gameState.prizes[index].revealed = true;
-    gameState.remainingDraws--;
-    const points = gameState.prizes[index].points;
-    gameState.earnedPoints += points;
-    
-    // 添加到历史记录
-    gameState.history.push({
-        number: gameState.prizes[index].number,
-        points: points
-    });
-    
-    // 计算连击
-    const now = Date.now();
-    if (now - gameState.lastDrawTime < 2000) {
-        gameState.combo++;
-    } else {
-        gameState.combo = 1;
+    if (!isConnected) {
+        alert('未连接到服务器，请稍后再试');
+        return;
     }
-    gameState.lastDrawTime = now;
     
-    // 保存状态到本地存储
-    saveGameState();
-    
-    // 重新渲染
-    renderGame();
-    
-    // 根据点数触发不同效果
+    // 发送到服务器
+    socket.emit('selectPrize', { prizeIndex: index });
+}
+
+// 触发抽奖动画
+function triggerPrizeAnimation(prize, combo) {
     const avgPoints = gameState.pointsPerPlayer;
     
-    if (points === 0) {
-        // 0点效果
+    if (prize.points === 0) {
         createScreenFlash('#808080');
         showBigText('💔 谢谢惠顾！');
-    } else if (points >= avgPoints * 3) {
-        // 超级大奖
+    } else if (prize.points >= avgPoints * 3) {
         createConfetti(100);
         createScreenFlash('#FFD700');
-        showBigText(`🎰 特等奖 ¥${points}!`);
-        if (gameState.combo > 1) {
-            setTimeout(() => showBigText(`${gameState.combo}x 连中!`), 800);
+        showBigText(`🎰 特等奖 ¥${prize.points}!`);
+        if (combo > 1) {
+            setTimeout(() => showBigText(`${combo}x 连中!`), 800);
         }
-    } else if (points >= avgPoints * 2) {
-        // 大奖
+    } else if (prize.points >= avgPoints * 2) {
         createConfetti(50);
         createScreenFlash('#ff6b6b');
-        showBigText(`🔥 一等奖 ¥${points}!`);
-    } else if (points > avgPoints) {
-        // 中奖
+        showBigText(`🔥 一等奖 ¥${prize.points}!`);
+    } else if (prize.points > avgPoints) {
         createConfetti(30);
-        showBigText(`🎉 中奖 ¥${points}!`);
+        showBigText(`🎉 中奖 ¥${prize.points}!`);
     } else {
-        showBigText(`✓ 获得 ¥${points}`);
-    }
-    
-    // 检查是否全部刮完
-    if (gameState.remainingDraws === 0) {
-        setTimeout(() => {
-            const totalInvest = gameState.playerCount * gameState.pointsPerPlayer;
-            const profit = gameState.earnedPoints - totalInvest;
-            const profitRate = (profit / totalInvest * 100).toFixed(1);
-            
-            let message;
-            if (profit > 0) {
-                message = `🎉 恭喜！总投入 ¥${totalInvest}，中奖 ¥${gameState.earnedPoints}，净赚 ¥${profit}（+${profitRate}%）！`;
-            } else if (profit === 0) {
-                message = `😊 不赔不赚！总投入 ¥${totalInvest}，中奖 ¥${gameState.earnedPoints}，持平！`;
-            } else {
-                message = `😢 总投入 ¥${totalInvest}，中奖 ¥${gameState.earnedPoints}，亏损 ¥${Math.abs(profit)}（${profitRate}%）`;
-            }
-            alert(message);
-        }, 1000);
+        showBigText(`✓ 获得 ¥${prize.points}`);
     }
 }
 
@@ -506,16 +518,12 @@ function revealAll() {
         return;
     }
     
-    gameState.prizes.forEach((prize, index) => {
-        if (!prize.revealed) {
-            prize.revealed = true;
-        }
-    });
+    if (!isConnected) {
+        alert('未连接到服务器，请稍后再试');
+        return;
+    }
     
-    // 保存状态到本地存储
-    saveGameState();
-    
-    renderGame();
+    socket.emit('revealAll');
 }
 
 // 渲染历史记录
@@ -541,27 +549,14 @@ function resetGame() {
         return;
     }
     
-    document.getElementById('setupPanel').style.display = 'block';
-    document.getElementById('gamePanel').style.display = 'none';
+    if (!isConnected) {
+        alert('未连接到服务器，请稍后再试');
+        return;
+    }
+    
+    socket.emit('resetGame');
+    
     document.getElementById('historyCard').style.display = 'none';
-    
-    // 重置游戏状态
-    gameState = {
-        totalPoints: 0,
-        playerCount: 0,
-        pointsPerPlayer: 0,
-        winRate: 70,
-        variance: 50,
-        prizes: [],
-        remainingDraws: 0,
-        earnedPoints: 0,
-        history: [],
-        combo: 0,
-        lastDrawTime: 0
-    };
-    
-    // 清除本地存储
-    clearGameState();
 }
 
 // 创建彩纸动画
@@ -613,48 +608,4 @@ function showBigText(text) {
     }, 1500);
 }
 
-// 保存游戏状态到本地存储
-function saveGameState() {
-    try {
-        const stateToSave = {
-            ...gameState,
-            timestamp: Date.now()
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    } catch (error) {
-        console.error('保存游戏状态失败:', error);
-    }
-}
 
-// 从本地存储加载游戏状态
-function loadGameState() {
-    try {
-        const savedState = localStorage.getItem(STORAGE_KEY);
-        if (savedState) {
-            const parsedState = JSON.parse(savedState);
-            
-            // 检查状态是否有效（有奖池数据）
-            if (parsedState.prizes && parsedState.prizes.length > 0) {
-                gameState = parsedState;
-                
-                // 切换到游戏界面
-                document.getElementById('setupPanel').style.display = 'none';
-                document.getElementById('gamePanel').style.display = 'block';
-                
-                // 渲染游戏界面
-                renderGame();
-            }
-        }
-    } catch (error) {
-        console.error('加载游戏状态失败:', error);
-    }
-}
-
-// 清除本地存储的游戏状态
-function clearGameState() {
-    try {
-        localStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-        console.error('清除游戏状态失败:', error);
-    }
-}

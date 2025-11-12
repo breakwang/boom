@@ -218,31 +218,28 @@ body {
 /* 奖项网格 */
 .prizes-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
     margin-bottom: 30px;
 }
 
 .prize-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 15px;
-    padding: 20px;
     text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-}
-
-.prize-box:hover {
-    transform: translateY(-5px) scale(1.05);
-    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    min-height: 200px;
 }
 
 .prize-box.revealed {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     cursor: default;
     animation: revealPulse 0.6s ease-out;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .prize-box.revealed:hover {
@@ -263,7 +260,60 @@ body {
 }
 
 .prize-hidden {
-    font-size: 2.5rem;
+    font-size: 1.2rem;
+}
+
+/* 刮刮乐卡片 */
+.scratch-card {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.scratch-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.scratch-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 1;
+}
+
+.scratch-content .prize-number {
+    font-size: 1.3rem;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.scratch-content .prize-points {
+    font-size: 1.1rem;
+    color: #666;
+}
+
+.scratch-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    cursor: crosshair;
+    touch-action: none;
 }
 
 /* 操作按钮 */
@@ -556,6 +606,21 @@ body {
     font-weight: 600;
 }
 
+.online-count {
+    font-size: 0.85rem;
+    color: #999;
+    margin-left: 5px;
+}
+
+.status-dot.connected {
+    background: #4CAF50;
+}
+
+.status-dot.disconnected {
+    background: #f44336;
+    animation: none;
+}
+
 @keyframes pulse {
     0%, 100% {
         opacity: 1;
@@ -578,8 +643,12 @@ body {
     }
     
     .prizes-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    
+    .scratch-card {
+        height: 180px;
     }
     
     .actions {
@@ -598,6 +667,11 @@ body {
     
     .prizes-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .scratch-card {
+        height: 160px;
     }
     
     .pool-info {

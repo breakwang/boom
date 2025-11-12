@@ -81,7 +81,26 @@
 
 ## 快速开始
 
-直接在浏览器中打开 `index.html` 文件即可开始使用。
+### 本地开发
+
+1. 安装依赖：
+```bash
+npm install
+```
+
+2. 启动服务器：
+```bash
+npm start
+```
+
+3. 打开浏览器访问：
+```
+http://localhost:3000
+```
+
+### 部署到服务器
+
+详见 [DEPLOYMENT.md](DEPLOYMENT.md) 文件。
 
 ## 算法说明
 
